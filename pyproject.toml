@@ -1,0 +1,26 @@
+[project]
+name = "pipeline-oncall"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "JamesV1402", email = "jamesvoinescu@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "dbt-duckdb>=1.9",
+    "duckdb>=1.1",
+    "httpx>=0.27",
+    "typer>=0.15",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.3", "pytest-cov>=6.0"]
+
+[project.scripts]
+oncall = "pipeline_oncall.cli:app"
+pipeline-oncall = "pipeline_oncall:main"
+
+[build-system]
+requires = ["uv_build>=0.11.32,<0.12.0"]
+build-backend = "uv_build"
