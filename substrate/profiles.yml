@@ -1,0 +1,9 @@
+oncall:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: oncall.duckdb
+      threads: 4
+      settings:
+        TimeZone: "UTC"
