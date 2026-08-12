@@ -1,0 +1,49 @@
+version: 2
+
+models:
+  - name: int_genmix_wide
+    description: >
+      Generation mix pivoted to one row per region-period. Fuel columns are
+      deliberately not coalesced, so a missing fuel surfaces as null rather
+      than as a silent zero. renewable_perc is solar + wind + hydro; biomass
+      is excluded as its renewable status is contested.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [period_start, region_id]
+    columns:
+      - name: fuel_count
+        description: "Always 9. Drops if any fuel disappears upstream, including 0% fuels."
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 9
+                max_value: 9
+      - name: total_perc
+        data_tests: [not_null]
+      - name: renewable_perc
+        data_tests: [not_null]
+
+  - name: int_region_halfhourly
+    description: >
+      Half-hourly intensity and generation mix for the 14 DNO regions only.
+      Aggregate regions (England/Scotland/Wales/GB) are excluded here so that
+      downstream roll-ups cannot double-count.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [period_start, region_id]
+    columns:
+      - name: period_start
+        data_tests: [not_null]
+      - name: region_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_regions')
+                field: region_id
+      - name: intensity_forecast
+        data_tests: [not_null]
+      - name: renewable_perc
+        data_tests: [not_null]

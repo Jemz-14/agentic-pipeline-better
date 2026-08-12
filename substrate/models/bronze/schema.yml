@@ -1,0 +1,76 @@
+version: 2
+
+models:
+  - name: stg_regions
+    description: "GB electricity regions. Rows 1-14 are DNO regions; 15-18 are aggregates."
+    columns:
+      - name: region_id
+        data_tests: [unique, not_null]
+      - name: region_name
+        data_tests: [unique, not_null]
+      - name: region_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["dno", "country", "national"]
+
+  - name: stg_regional_intensity
+    description: "Half-hourly forecast carbon intensity per region."
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [period_start, region_id]
+    columns:
+      - name: period_start
+        data_tests: [not_null]
+      - name: region_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_regions')
+                field: region_id
+      - name: intensity_forecast
+        data_tests: [not_null]
+      - name: intensity_index
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["very low", "low", "moderate", "high", "very high"]
+
+  - name: stg_regional_genmix
+    description: "Half-hourly generation mix per region, one row per fuel."
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [period_start, region_id, fuel]
+    columns:
+      - name: region_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_regions')
+                field: region_id
+      - name: fuel
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [biomass, coal, imports, gas, nuclear, other, hydro, solar, wind]
+      - name: perc
+        data_tests: [not_null]
+
+  - name: stg_national_intensity
+    description: "Half-hourly national carbon intensity, forecast and settled actual."
+    columns:
+      - name: period_start
+        data_tests: [unique, not_null]
+      - name: intensity_forecast
+        data_tests: [not_null]
+      - name: intensity_actual
+        data_tests: [not_null]
+      - name: intensity_index
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["very low", "low", "moderate", "high", "very high"]

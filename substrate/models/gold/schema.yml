@@ -1,0 +1,58 @@
+version: 2
+
+models:
+  - name: agg_region_daily
+    description: "Daily carbon intensity and renewable share per DNO region."
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [intensity_date, region_id]
+    columns:
+      - name: intensity_date
+        data_tests: [not_null]
+      - name: region_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_regions')
+                field: region_id
+      - name: period_count
+        description: "Always 48. Falls short on missing periods, exceeds on duplicates."
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 48
+                max_value: 48
+      - name: avg_intensity
+        data_tests: [not_null]
+      - name: avg_renewable_perc
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 100
+
+  - name: agg_national_daily
+    description: >
+      Daily national carbon intensity with forecast error, alongside the
+      unweighted mean across the 14 DNO regions.
+    columns:
+      - name: intensity_date
+        data_tests: [unique, not_null]
+      - name: period_count
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 48
+                max_value: 48
+      - name: region_count
+        description: "Always 14. Rises to 18 if aggregate regions leak into the roll-up."
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 14
+                max_value: 14
+      - name: avg_national_actual
+        data_tests: [not_null]
