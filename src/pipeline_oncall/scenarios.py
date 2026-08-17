@@ -98,7 +98,7 @@ def _duplicate_keys(db_path: Path) -> None:
 Drop a fuel from mix
 This is a row loss not a column loss, which is why its SOURCE DATA QUALITY rather than schema drift
 """
-def _missing_fields(db_path: Path) -> None:
+def _missing_fuel(db_path: Path) -> None:
     _sql(db_path, """delete from raw.regional_intensity where fuel = 'coal' """)
 
 GRAIN_MODEL = "models/gold/agg_national_daily.sql"
@@ -123,8 +123,7 @@ def _bad_join_grain(db_path: Path) -> None:
             f"expected exactly 1 occurrence of {GRAIN_ANCHOR} in {path} but found {found}"
         )
 
-    write_file(path original.replace(GRAIN_ANCHOR,GRAIN_REPLACEMENT))
-
+    write_file(path, original.replace(GRAIN_ANCHOR, GRAIN_REPLACEMENT))
 
 # Registry
 #-------------------
@@ -194,4 +193,4 @@ def get(name: str) -> Scenario:
         ) from None
 
 def names() -> list[str]:
-    return sorted(SCENARIOS)
+    return list(SCENARIOS)
