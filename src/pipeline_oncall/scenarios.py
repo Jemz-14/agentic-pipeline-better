@@ -99,7 +99,7 @@ Drop a fuel from mix
 This is a row loss not a column loss, which is why its SOURCE DATA QUALITY rather than schema drift
 """
 def _missing_fuel(db_path: Path) -> None:
-    _sql(db_path, """delete from raw.regional_intensity where fuel = 'coal' """)
+    _sql(db_path, "delete from raw.regional_genmix where fuel = 'coal'")
 
 GRAIN_MODEL = "models/gold/agg_national_daily.sql"
 GRAIN_ANCHOR = "{{ ref('int_region_halfhourly') }}"
@@ -117,7 +117,7 @@ def _bad_join_grain(db_path: Path) -> None:
     path = SUBSTRATE_DIR / GRAIN_MODEL
     original = read_file(path)
 
-    found = original.cout(GRAIN_ANCHOR)
+    found = original.count(GRAIN_ANCHOR)
     if found != 1:
         raise ValueError(
             f"expected exactly 1 occurrence of {GRAIN_ANCHOR} in {path} but found {found}"
