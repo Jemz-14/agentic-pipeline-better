@@ -7,13 +7,15 @@ __pycache__/
 
 # dbt
 target/
+substrate/target_test/
 dbt_packages/
 logs/
 .user.yml
 
-# duckdb
+# duckdb + injection state
 *.duckdb
 *.duckdb.wal
+substrate/*.state.json
 
 # secrets
 .env

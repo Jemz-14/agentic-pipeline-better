@@ -1,0 +1,14 @@
+version: 2
+
+sources:
+  - name: carbon
+    description: "UK National Grid ESO Carbon Intensity API — frozen 14-day snapshot"
+    schema: raw
+    loaded_at_field: _loaded_at
+    freshness:
+      warn_after: {count: 2, period: hour}
+      error_after: {count: 6, period: hour}
+    tables:
+      - name: regional_intensity
+      - name: regional_genmix
+      - name: national_intensity

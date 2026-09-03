@@ -1,0 +1,19 @@
+oncall:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: oncall.duckdb
+      threads: 4
+      settings:
+        # Load-bearing, not cosmetic: cast(period_start as date) in the gold
+        # models resolves in the session timezone, so without this the daily
+        # grain buckets differently on a local machine than in CI.
+        TimeZone: "UTC"
+
+    test:
+      type: duckdb
+      path: oncall_test.duckdb
+      threads: 4
+      settings:
+        TimeZone: "UTC"
