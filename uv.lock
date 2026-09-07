@@ -836,6 +836,8 @@ dependencies = [
     { name = "dbt-duckdb" },
     { name = "duckdb" },
     { name = "httpx" },
+    { name = "networkx" },
+    { name = "pydantic" },
     { name = "typer" },
 ]
 
@@ -850,6 +852,8 @@ requires-dist = [
     { name = "dbt-duckdb", specifier = ">=1.9" },
     { name = "duckdb", specifier = ">=1.1" },
     { name = "httpx", specifier = ">=0.27" },
+    { name = "networkx", specifier = ">=3.3" },
+    { name = "pydantic", specifier = ">=2.9" },
     { name = "typer", specifier = ">=0.15" },
 ]
 
