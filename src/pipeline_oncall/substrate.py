@@ -4,7 +4,7 @@ Unlike scripts/ingest.py, this is on the runtime path: every dbt build and
 every eval scenario depends on it, so it lives in the package and is tested.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import duckdb
@@ -42,7 +42,7 @@ def load_raw(
     """
     db_path = db_path or DEFAULT_DB
     data_dir = data_dir or DEFAULT_DATA
-    loaded_at = loaded_at or datetime.now(timezone.utc)
+    loaded_at = loaded_at or datetime.now(UTC)
 
     # Resolve and check every CSV before touching the database, so a missing
     # fixture can't leave a half-loaded raw schema behind.

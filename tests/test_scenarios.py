@@ -152,9 +152,3 @@ def test_bad_join_grain_raises_if_its_anchor_is_gone(db, monkeypatch):
     with pytest.raises(ValueError, match="expected exactly 1 occurrence"):
         scenarios.get("bad_join_grain").inject(db)
 
-@pytest.fixture(autouse=True)
-def restore_grain_model():
-    """bad_join_grain mutates a tracked file; never leave it modified."""
-    original = read_file(SUBSTRATE_DIR / GRAIN_MODEL)
-    yield
-    write_file(SUBSTRATE_DIR / GRAIN_MODEL, original)

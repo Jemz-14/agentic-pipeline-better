@@ -11,7 +11,7 @@ the thing being measured.
 """
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import typer
@@ -83,7 +83,7 @@ def break_(
         json.dumps(
             {
                 "scenario": spec.name,
-                "injected_at": datetime.now(timezone.utc).isoformat(),
+                "injected_at": datetime.now(UTC).isoformat(),
                 "db_path": str(db),
                 "file_backups": backups,
             },
@@ -95,7 +95,9 @@ def break_(
 
     try:
         spec.inject(db)
-    except Exception as exc:
+    # Injectors run arbitrary SQL and file edits, so any exception type is possible.
+    # Catching broadly is the point: state is already on disk and revert still works.
+    except Exception as exc:  # noqa: BLE001
         typer.secho(f"injection failed: {exc}", fg=typer.colors.RED, err=True)
         _fail("state was recorded; run `oncall revert` to restore")
 
@@ -116,14 +118,17 @@ def revert(
 
     state = json.loads(state_file.read_text(encoding="utf-8"))
 
-    # Files first, then data, the drop the state file last, if any steps fail, the state file survives and revert
-    # Can then be re run
+    # Files first, then data, then drop the state file last. If any step fails,
+    # the state file survives and revert can simply be re-run.
 
     for rel, content in state.get("file_backups",{}).items():
         write_file(SUBSTRATE_DIR / rel, content)
 
     counts = load_raw(db_path = db)
     state_file.unlink()
+
+    typer.secho(f"reverted {state['scenario']}", fg=typer.colors.GREEN, bold=True)
+    typer.echo(f"    {counts}")
 
 @app.command()
 def status(

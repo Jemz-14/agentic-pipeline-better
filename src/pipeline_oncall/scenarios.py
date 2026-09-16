@@ -14,6 +14,7 @@ lists in `files_touched` before calling its injector.
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+
 import duckdb
 
 from pipeline_oncall.models import RootCause

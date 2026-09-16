@@ -8,12 +8,11 @@ import json
 import subprocess
 
 import pytest
+from typer.testing import CliRunner
 
 from pipeline_oncall.cli import app, state_path
 from pipeline_oncall.scenarios import SUBSTRATE_DIR
-from pipeline_oncall.substrate import REPO_ROOT, load_raw
-from typer.testing import CliRunner
-
+from pipeline_oncall.substrate import load_raw
 
 pytestmark = pytest.mark.dbt
 
@@ -36,6 +35,7 @@ def dbt(*args: str) -> subprocess.CompletedProcess:
         cwd=SUBSTRATE_DIR,
         capture_output=True,
         text=True,
+        check = False,
     )
 
 def failed_ids() -> set[str]:

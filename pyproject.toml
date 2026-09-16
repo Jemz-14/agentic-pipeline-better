@@ -17,7 +17,11 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["pytest>=8.3", "pytest-cov>=6.0"]
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "ruff>=0.16.7",
+]
 
 [project.scripts]
 oncall = "pipeline_oncall.cli:app"
@@ -31,3 +35,16 @@ build-backend = "uv_build"
 testpaths = ["tests"]
 addopts = "-q"
 markers = ["dbt: integration tests that shell out to dbt (slow)"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "B", "I", "UP", "BLE", "PLW"]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["typer.Option", "typer.Argument"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["pipeline_oncall"]

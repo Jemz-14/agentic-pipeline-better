@@ -19,3 +19,5 @@ substrate/*.state.json
 
 # secrets
 .env
+
+.ruff_cache/

@@ -5,7 +5,7 @@ rows, every downstream eval label is wrong and nothing else will tell you.
 """
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import duckdb
@@ -95,12 +95,12 @@ def test_loaded_at_defaults_to_now_and_is_tz_aware(loaded_db):
     """A naive timestamp here would silently corrupt dbt freshness maths."""
     (stamp,), = query(loaded_db, "select max(_loaded_at) from raw.regional_intensity")
     assert stamp.tzinfo is not None
-    assert abs((datetime.now(timezone.utc) - stamp).total_seconds()) < 300
+    assert abs((datetime.now(UTC) - stamp).total_seconds()) < 300
 
 
 def test_stamps_explicit_loaded_at(tmp_path):
     """The seam the stale_source fault injection rides on."""
-    stamp = datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+    stamp = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
     db = tmp_path / "oncall.duckdb"
     load_raw(db_path=db, loaded_at=stamp)
 

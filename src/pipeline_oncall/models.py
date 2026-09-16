@@ -5,11 +5,11 @@ the agent and the sinks. Principle 2 -- every claim cites evidence -- is
 enforced here in the type system rather than requested in a prompt.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from enum import StrEnum
 from typing import Literal
-from enum import Enum
-from pydantic import BaseModel, Field, model_validator
 
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 # Every status dbt can emit, taken from RunStatus, TestStatus and
 # FreshnessStatus. The spec's shorter list omits "pass", which is the most
@@ -27,7 +27,7 @@ FAILED_STATUSES: frozenset[str] = frozenset({"error", "fail", "runtime error"})
 SKIPPED_STATUSES: frozenset[str] = frozenset({"skipped"})
 
 
-class RootCause(str, Enum):
+class RootCause(StrEnum):
     UPSTREAM_SCHEMA_DRIFT = "upstream_schema_drift"
     SOURCE_FRESHNESS_STALE = "source_freshness_stale"
     SOURCE_DATA_QUALITY = "source_data_quality"
@@ -47,14 +47,18 @@ class FailureEvent(BaseModel):
 
 class NodeResult(BaseModel):
     """ One node's outcome, parsed from run_results.json or sources.json"""
-
+    model_config = ConfigDict(extra="forbid")
     unique_id: str
-    resources_type: ResourceType
+    resource_type: ResourceType
     status: NodeStatus
     message: str | None = None
     execution_time: float = 0.0
     relation: str | None = None       # schema.table, unquoted
     file_path: str | None = None
+    # From manifest.json rather than run_results.json. The collector merges
+    # both files, so one type carries the outcome and the topology.
+    depends_on: list[str] = Field(default_factory=list)
+    attached_node: str | None = None  # tests only: the model under test
 
     @property
     def failed(self) -> bool:
@@ -63,6 +67,8 @@ class NodeResult(BaseModel):
     @property
     def skipped(self) -> bool:
         return self.status in SKIPPED_STATUSES
+
+
 
 class Evidence(BaseModel):
     """A single observation. IDs are assigned by the evidence log, never by
@@ -101,7 +107,7 @@ class CostLedger(BaseModel):
 
 class IncidentReport(BaseModel):
     incident_id: str
-    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     culprit_node: str | None = None
     root_cause: RootCause = RootCause.UNKNOWN
     confidence: Literal["high", "medium", "low"] = "low"

@@ -3,10 +3,13 @@ Fetch UK Carbon intensity data and freeze it to CSV
 
 Not part of the runtime path. Run manually to regenerate substrate/data/.
 """
-import argparse, csv, json
+import argparse
+import csv
+import json
 from collections.abc import Iterator
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
+
 import httpx
 
 BASE = "https://api.carbonintensity.org.uk"
@@ -115,6 +118,10 @@ def main(start: datetime, end: datetime, out: Path) -> None:
     regional_genmix: dict = {}
     national: dict = {}
 
+    c_reg_int = len(regional_intensity)
+    c_reg_gen = len(regional_genmix)
+    c_nat = len(national)
+
     with httpx.Client(timeout=60.0) as client:
         for c_start, c_end in chunks(start, end):
             print(f"fetching {c_start:%Y-%m-%d} -> {c_end:%Y-%m-%d}")
@@ -139,26 +146,37 @@ def main(start: datetime, end: datetime, out: Path) -> None:
               ["period_start", "period_end", "regionid", "intensity_forecast", "intensity_index"])
     write_csv(out / "regional_genmix.csv", regional_genmix,
               ["period_start", "regionid", "fuel", "perc"])
-    write_csv(out / "national_intensity.csv", national,
-              ["period_start", "period_end", "intensity_forecast", "intensity_actual", "intensity_index"])
+    write_csv(
+        out / "national_intensity.csv",
+        national,
+        ["period_start", "period_end", "intensity_forecast", "intensity_actual", "intensity_index"],
+    )
 
-    (out / "_snapshot.json").write_text(json.dumps({
-        "source": BASE,
-        "window_start": start.isoformat(),
-        "window_end": end.isoformat(),
-        "fetched_at": datetime.now(timezone.utc).isoformat(),
-        "row_counts": {
-            "regional_intensity": len(regional_intensity),
-            "regional_genmix": len(regional_genmix),
-            "national_intensity": len(national),
-        },
-    }, indent=2) + "\n", encoding="utf-8")
+    (out / "_snapshot.json").write_text(
+        json.dumps(
+            {
+                "source": BASE,
+                "window_start": start.isoformat(),
+                "window_end": end.isoformat(),
+                "fetched_at": datetime.now(UTC).isoformat(),
+                "row_counts": {
+                    "regional_intensity": c_reg_int,
+                    "regional_genmix": c_reg_gen,
+                    "national_intensity": c_nat,
+                },
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    counts = f"{c_reg_int} / {c_reg_gen} / {c_nat}"
+    print(f"wrote {counts} rows to {out}")
 
-    print(f"wrote {len(regional_intensity)} / {len(regional_genmix)} / {len(national)} rows to {out}")
 
 
 def _day(s: str) -> datetime:
-    return datetime.strptime(s, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    return datetime.strptime(s, "%Y-%m-%d").replace(tzinfo=UTC)
 
 
 if __name__ == "__main__":
