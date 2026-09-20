@@ -19,6 +19,7 @@ NodeStatus = Literal[
     "success", "error", "skipped", "partial success", "no-op", "reused",
     "pass", "fail", "warn",
     "runtime error",
+    "not run",
 ]
 
 ResourceType = Literal["model", "test", "source", "snapshot", "seed", "operation"]
@@ -52,6 +53,7 @@ class NodeResult(BaseModel):
     resource_type: ResourceType
     status: NodeStatus
     message: str | None = None
+    failures: int | None = None
     execution_time: float = 0.0
     relation: str | None = None       # schema.table, unquoted
     file_path: str | None = None

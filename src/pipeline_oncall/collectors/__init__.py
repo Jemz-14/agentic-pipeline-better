@@ -1,0 +1,1 @@
+"""Deterministic evidence collectors. No LLM."""
