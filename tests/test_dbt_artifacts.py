@@ -404,3 +404,4 @@ def test_failing_test_localises_to_its_model(tmp_path):
 
     assert result.primary_culprit == "model.p.stg"
     assert result.blast_radius["model.p.stg"] == ("model.p.mart",)
+

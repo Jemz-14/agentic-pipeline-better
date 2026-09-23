@@ -10,7 +10,10 @@ import subprocess
 import pytest
 from typer.testing import CliRunner
 
-from pipeline_oncall.cli import app, state_path
+from pipeline_oncall import scenarios
+from pipeline_oncall.cli import app
+from pipeline_oncall.collectors.dbt_artifacts import load_artifacts
+from pipeline_oncall.localise import localise
 from pipeline_oncall.scenarios import SUBSTRATE_DIR
 from pipeline_oncall.substrate import load_raw
 
@@ -45,11 +48,21 @@ def failed_ids() -> set[str]:
 
 @pytest.fixture(autouse=True)
 def clean_substrate():
-    """Always revert, even on failure -- bad_join_grain mutates a tracked file."""
+    """Start and end every test with no scenario active.
+
+    Reverting at setup as well as teardown recovers from an interrupted
+    previous run: Ctrl+C mid-build skips teardown and leaves a scenario
+    injected, which the next run would otherwise trip over.
+    """
+    runner.invoke(app, ["rever", "--db", str(TEST_DB)])
     load_raw(db_path=TEST_DB)
+
+    for stale in ("run_results.json", "sources.json"):
+        (SUBSTRATE_DIR / TARGET_PATH / stale).unlink(missing_ok=True)
+
     yield
-    if state_path(TEST_DB).exists():
-        runner.invoke(app, ["revert", "--db", str(TEST_DB)])
+
+    runner.invoke(app, ["revert", "--db", str(TEST_DB)])
 
 def break_(name: str) -> None:
     result = runner.invoke(app, ["break", "-s", name, "--db", str(TEST_DB)])
@@ -91,3 +104,47 @@ def test_scenario_fails_the_expected_node(name, expected):
     assert any(expected in uid for uid in failed_ids()), (
         f"{name} expected a failure matching {expected!r}, got {sorted(failed_ids())}"
     )
+
+def triage():
+    """Run dbt the way the eval runner will, then collect the artifacts.
+
+    Freshness first, then build. Both commands rewrite manifest.json, so this
+    order leaves the manifest carrying the build's invocation id. It also means
+    sources.json is seconds older than run_results.json rather than left over
+    from an earlier scenario.
+    """
+
+    dbt("source","freshness")
+    dbt("build")
+    return load_artifacts(SUBSTRATE_DIR / TARGET_PATH)
+
+@pytest.mark.parametrize("name", scenarios.names())
+def test_scenario_localises_to_its_expected_culprit(name):
+    """The deterministic core, end to end. Here we inject a fault, run dbt, parse the
+    artifacts, and check the localiser names the node the registry predicted.
+
+    No LLM anywhere in this path.
+    """
+    spec = scenarios.get(name)
+    break_(name)
+
+    artifacts = triage()
+    result = localise(artifacts.nodes)
+
+    assert artifacts.freshness_checked, "sources.json was rejected as stale"
+    assert artifacts.manifest_matches_build, "manifest is from a different invocation"
+    assert artifacts.orphaned_results == ()
+
+    expected = () if spec.expected_culprit is None else (spec.expected_culprit,)
+    assert result.culprits == expected, (
+        f"{name}: expected {expected}, got {result.culprits}; "
+        f"(failing tests: {sorted(result.failing_tests)}"
+    )
+
+def test_no_fault_produces_no_cascade():
+    """ False positive check -> healthy build must localise to nothing at all, no
+    culprits / no affected nodes"""
+    break_("no_fault")
+    result = localise(triage().nodes)
+    assert result.culprits == ()
+    assert result.cascade == ()
