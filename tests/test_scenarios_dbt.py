@@ -11,6 +11,7 @@ import pytest
 from typer.testing import CliRunner
 
 from pipeline_oncall import scenarios
+from pipeline_oncall.baseline import classify
 from pipeline_oncall.cli import app
 from pipeline_oncall.collectors.dbt_artifacts import load_artifacts
 from pipeline_oncall.localise import localise
@@ -148,3 +149,36 @@ def test_no_fault_produces_no_cascade():
     result = localise(triage().nodes)
     assert result.culprits == ()
     assert result.cascade == ()
+
+
+# Scenarios the baseline is expected to get wrong, and why. Each is marked
+# strict, so if the baseline ever starts getting one right the suite fails --
+# that means someone tuned the rules to a scenario, and the agent comparison
+# is no longer honest.
+BASELINE_KNOWN_MISSES = {
+    "missing_fuel": (
+        "the failing test sits two hops from the source; from dbt artifacts "
+        "alone, missing source rows and a logic bug look identical"
+    ),
+}
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        pytest.param(n, marks=pytest.mark.xfail(strict=True, reason=BASELINE_KNOWN_MISSES[n]))
+        if n in BASELINE_KNOWN_MISSES
+        else n
+        for n in scenarios.names()
+    ],
+)
+def tests_baseline_classifies_scenario(name):
+    spec = scenarios.get(name)
+    break_(name)
+
+    nodes = triage().nodes
+    result = classify(nodes,localise(nodes))
+
+    assert result.root_cause == spec.expected_root_cause, (
+        f"{name}: baseline said {result.root_cause} via {result.rule!r}; "
+        f"expected {spec.expected_root_cause}"
+    )
