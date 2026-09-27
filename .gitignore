@@ -21,3 +21,5 @@ substrate/*.state.json
 .env
 
 .ruff_cache/
+
+artifacts/
