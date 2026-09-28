@@ -15,6 +15,8 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 # FreshnessStatus. The spec's shorter list omits "pass", which is the most
 # common value in a healthy run_results.json.
 
+
+
 NodeStatus = Literal[
     "success", "error", "skipped", "partial success", "no-op", "reused",
     "pass", "fail", "warn",
@@ -28,6 +30,15 @@ FAILED_STATUSES: frozenset[str] = frozenset({"error", "fail", "runtime error"})
 SKIPPED_STATUSES: frozenset[str] = frozenset({"skipped"})
 
 
+class Contract(BaseModel):
+    """Base for every contract: an unknown field is an error, never silently dropped.
+
+    Phase 3 parses LLM output into these models. A misspelled or invented
+    field must fail validation there, not vanish.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
 class RootCause(StrEnum):
     UPSTREAM_SCHEMA_DRIFT = "upstream_schema_drift"
     SOURCE_FRESHNESS_STALE = "source_freshness_stale"
@@ -38,7 +49,7 @@ class RootCause(StrEnum):
     CONFIG_OR_PERMISSIONS = "config_or_permissions"
     UNKNOWN = "unknown"
 
-class FailureEvent(BaseModel):
+class FailureEvent(Contract):
     """What the orchestrator tells us happened. The entry point to triage."""
     run_id: str
     orchestrator: Literal["dagster", "airflow", "dbt_cli"]
@@ -46,9 +57,8 @@ class FailureEvent(BaseModel):
     started_at: datetime
     finished_at: datetime
 
-class NodeResult(BaseModel):
+class NodeResult(Contract):
     """ One node's outcome, parsed from run_results.json or sources.json"""
-    model_config = ConfigDict(extra="forbid")
     unique_id: str
     resource_type: ResourceType
     status: NodeStatus
@@ -72,7 +82,7 @@ class NodeResult(BaseModel):
 
 
 
-class Evidence(BaseModel):
+class Evidence(Contract):
     """A single observation. IDs are assigned by the evidence log, never by
      the model, so a report cannot cite something that was never collected."""
 
@@ -82,7 +92,7 @@ class Evidence(BaseModel):
     summary: str
     raw_ref: str # path to full payload on disk
 
-class Finding(BaseModel):
+class Finding(Contract):
     """One claim about the incident.
 
      evidence_ids must be non-empty. This is principle 2: an uncited claim is
@@ -95,7 +105,7 @@ class Finding(BaseModel):
     evidence_ids: list[str] = Field(min_length=1)
 
 
-class CostLedger(BaseModel):
+class CostLedger(Contract):
     """Per-incident spend. Populated with zeros on the deterministic path --
      the fields exist so a rules-baseline report and an agent report are
      directly comparable."""
@@ -107,19 +117,20 @@ class CostLedger(BaseModel):
     wall_seconds: float = 0.0
     estimated_usd: float = 0.0
 
-class IncidentReport(BaseModel):
+class IncidentReport(Contract):
     incident_id: str
     generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     culprit_node: str | None = None
     root_cause: RootCause = RootCause.UNKNOWN
     confidence: Literal["high", "medium", "low"] = "low"
+    summary: str
 
     findings: list[Finding] = Field(default_factory=list)
     blast_radius: list[str] = Field(default_factory=list)
 
     suggested_fix: str | None = None
     suggested_patch: str | None = None
-    unverified_hypothesis: list[str] = Field(default_factory=list)
+    unverified_hypotheses: list[str] = Field(default_factory=list)
 
     status: Literal["complete", "budget_exhausted", "insufficient_evidence"]
     cost: CostLedger =Field(default_factory=CostLedger)
