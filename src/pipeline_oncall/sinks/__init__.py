@@ -1,0 +1,1 @@
+"""Report sinks: where a finished IncidentReport goes."""
